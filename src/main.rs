@@ -2,6 +2,7 @@ use std::env;
 
 mod encode;
 mod decode;
+mod bst;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
