@@ -1,8 +1,8 @@
 use std::env;
 
-mod encode;
-mod decode;
 mod bst;
+mod decode;
+mod encode;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

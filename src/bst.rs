@@ -2,22 +2,22 @@ use std::cmp::Ordering;
 
 pub enum Node {
     Branch(BranchNode),
-    Leaf(LeafNode)
+    Leaf(LeafNode),
 }
 
 impl Node {
     pub fn get_weight(&self) -> usize {
         match self {
             Node::Branch(branch) => branch.weight,
-            Node::Leaf(leaf) => leaf.weight
+            Node::Leaf(leaf) => leaf.weight,
         }
     }
 
-    pub fn set_path(&mut self, mut new_path: Vec<bool>, left: bool) {
-        new_path.push(left);
+    pub fn set_path(&mut self, mut new_path: Vec<bool>, right: bool) {
+        new_path.push(right);
         match self {
             Node::Branch(branch) => branch.path = Some(new_path),
-            Node::Leaf(leaf) => leaf.path = Some(new_path)
+            Node::Leaf(leaf) => leaf.path = Some(new_path),
         }
     }
 }
@@ -34,7 +34,7 @@ impl PartialOrd for Node {
     }
 }
 
-impl Eq for Node { }
+impl Eq for Node {}
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
@@ -46,13 +46,13 @@ pub struct BranchNode {
     pub left: Box<Node>,
     pub right: Box<Node>,
     pub path: Option<Vec<bool>>,
-    weight: usize
+    weight: usize,
 }
 
 pub struct LeafNode {
     pub symbol: u8,
     pub path: Option<Vec<bool>>,
-    weight: usize
+    weight: usize,
 }
 
 impl BranchNode {
@@ -62,15 +62,29 @@ impl BranchNode {
         let first_node = Box::new(first);
         let second_node = Box::new(second);
         if weight_difference < 0 {
-            Node::Branch(BranchNode {left: first_node, right: second_node, weight, path: None})
+            Node::Branch(BranchNode {
+                left: first_node,
+                right: second_node,
+                weight,
+                path: None,
+            })
         } else {
-            Node::Branch(BranchNode {left: second_node, right: first_node, weight, path: None})
+            Node::Branch(BranchNode {
+                left: second_node,
+                right: first_node,
+                weight,
+                path: None,
+            })
         }
     }
 }
 
 impl LeafNode {
     pub fn new(symbol: u8, weight: usize) -> Node {
-        Node::Leaf(LeafNode {symbol, weight, path: None})
+        Node::Leaf(LeafNode {
+            symbol,
+            weight,
+            path: None,
+        })
     }
 }

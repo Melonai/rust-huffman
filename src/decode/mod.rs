@@ -1,3 +1,3 @@
-pub fn decode(file_path: &str) {
+pub fn decode(_file_path: &str) {
     unimplemented!();
 }
