@@ -1,8 +1,7 @@
+use crate::bst::{BranchNode, LeafNode, Node};
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fs::File;
 use std::io::{Read, Write};
-
-use crate::bst::{BranchNode, LeafNode, Node};
 use std::path::Path;
 use std::time::Instant;
 
@@ -69,21 +68,26 @@ pub fn encode(file_path: &str) -> Result<(), std::io::Error> {
     for byte in &buffer {
         output.append(&mut indices.get(byte).unwrap().clone());
     }
-
-    current = log_time(current, "Created output from file");
-
-    let mut result = Vec::new();
-    for byte in output.chunks(8) {
-        result.push(byte.iter().fold(0, |acc, b| acc << 1 | (*b as u8)));
-    }
-
+    current = log_time(current, "Created output for file");
+    let mut output = booleans_to_u8(output);
     current = log_time(current, "Converted output to bytes");
 
-    let mut output = File::create(format!(
+    let mut map: Vec<u8> = vec![];
+    for (value, index) in indices.into_iter() {
+        map.push(value);
+        map.push((index.len() as f32 / 8.0).ceil() as u8);
+        map.extend(booleans_to_u8(index));
+    }
+    current = log_time(current, "Converted indices to usable map");
+
+    let mut output_file = File::create(format!(
         "{}.huff",
         Path::new(&file_path).file_stem().unwrap().to_str().unwrap()
     ))?;
-    output.write_all(result.as_slice())?;
+
+    output_file.write_all(map.as_slice())?;
+    output_file.write_all(vec![10, 10, 10, 10].as_slice())?;
+    output_file.write_all(output.as_slice())?;
 
     current = log_time(current, "Wrote to file");
     log_time(start, "Full time");
@@ -94,4 +98,12 @@ pub fn encode(file_path: &str) -> Result<(), std::io::Error> {
 fn log_time(current: Instant, message: &str) -> Instant {
     println!("{}: {}", message, current.elapsed().as_secs_f32());
     Instant::now()
+}
+
+fn booleans_to_u8(booleans: Vec<bool>) -> Vec<u8> {
+    let mut result: Vec<u8> = Vec::new();
+    for byte in booleans.chunks(8) {
+        result.push(byte.iter().fold(0, |acc, b| acc << 1 | (*b as u8)));
+    }
+    result
 }
