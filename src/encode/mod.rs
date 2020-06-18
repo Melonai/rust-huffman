@@ -1,13 +1,13 @@
 use crate::bst::{BranchNode, LeafNode, Node};
-use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap, VecDeque, BTreeMap};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::time::Instant;
+use std::iter::FromIterator;
 
 pub fn encode(file_path: &str) -> Result<(), std::io::Error> {
     let start = Instant::now();
-    let mut current = Instant::now();
 
     let mut file = File::open(file_path)?;
     let mut buffer = Vec::new();
@@ -17,15 +17,15 @@ pub fn encode(file_path: &str) -> Result<(), std::io::Error> {
     for byte in &buffer {
         *byte_count_table.entry(*byte).or_insert(0) += 1;
     }
-
-    current = log_time(current, "Counted byte occurrence");
+    let byte_count_table = BTreeMap::from_iter(byte_count_table);
+    log_time(start, "Counted byte occurrence");
 
     let mut node_heap: BinaryHeap<Node> = byte_count_table
         .iter()
         .map(|n| LeafNode::new(*n.0, *n.1))
         .collect();
 
-    current = log_time(current, "Made leaf nodes");
+    log_time(start, "Made leaf nodes");
 
     while node_heap.len() != 1 {
         let first_node = node_heap.pop().unwrap();
@@ -34,12 +34,12 @@ pub fn encode(file_path: &str) -> Result<(), std::io::Error> {
         node_heap.push(new_node);
     }
 
-    current = log_time(current, "Made binary tree");
+    log_time(start, "Made binary tree");
 
     let mut queue = VecDeque::<Node>::new();
     queue.push_front(node_heap.pop().unwrap());
 
-    let mut indices = HashMap::new();
+    let mut indices = BTreeMap::new();
 
     while let Some(node) = queue.pop_front() {
         match node {
@@ -62,23 +62,27 @@ pub fn encode(file_path: &str) -> Result<(), std::io::Error> {
         }
     }
 
-    current = log_time(current, "Got indices from binary tree");
+    log_time(start, "Got indices from binary tree");
 
     let mut output: Vec<bool> = vec![];
     for byte in &buffer {
         output.append(&mut indices.get(byte).unwrap().clone());
     }
-    current = log_time(current, "Created output for file");
-    let mut output = booleans_to_u8(output);
-    current = log_time(current, "Converted output to bytes");
 
-    let mut map: Vec<u8> = vec![];
-    for (value, index) in indices.into_iter() {
+    log_time(start, "Created output for file");
+    let output = booleans_to_u8(output);
+    log_time(start, "Converted output to bytes");
+
+    let mut map: Vec<u8> = vec![indices.len() as u8];
+    for (value, boolean_index) in indices.into_iter() {
+        let bit_amount = boolean_index.len() as u8;
+        let index = booleans_to_u8(boolean_index);
         map.push(value);
-        map.push((index.len() as f32 / 8.0).ceil() as u8);
-        map.extend(booleans_to_u8(index));
+        map.push(bit_amount);
+        map.extend(index);
     }
-    current = log_time(current, "Converted indices to usable map");
+
+    log_time(start, "Converted indices to usable map");
 
     let mut output_file = File::create(format!(
         "{}.huff",
@@ -86,18 +90,15 @@ pub fn encode(file_path: &str) -> Result<(), std::io::Error> {
     ))?;
 
     output_file.write_all(map.as_slice())?;
-    output_file.write_all(vec![10, 10, 10, 10].as_slice())?;
     output_file.write_all(output.as_slice())?;
 
-    current = log_time(current, "Wrote to file");
-    log_time(start, "Full time");
+    log_time(start, "Finished");
 
     Ok(())
 }
 
-fn log_time(current: Instant, message: &str) -> Instant {
-    println!("{}: {}", message, current.elapsed().as_secs_f32());
-    Instant::now()
+fn log_time(start: Instant, message: &str) {
+    println!("{}: {}", message, start.elapsed().as_secs_f32());
 }
 
 fn booleans_to_u8(booleans: Vec<bool>) -> Vec<u8> {
