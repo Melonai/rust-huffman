@@ -1,3 +1,3 @@
-pub fn decode(_file_path: &str) {
+pub fn decode(_buffer: &Vec<u8>) {
     unimplemented!();
 }
