@@ -24,7 +24,7 @@ fn main() {
             };
         }
         "-d" => {
-            decode::decode(&buffer);
+            decode::decode(buffer);
         }
         _ => {
             help();
