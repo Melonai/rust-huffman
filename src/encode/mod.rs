@@ -50,7 +50,7 @@ fn create_bst(count: &BTreeMap<u8, usize>) -> Node {
     while node_heap.len() != 1 {
         let first_node = node_heap.pop().unwrap();
         let second_node = node_heap.pop().unwrap();
-        let new_node = BranchNode::new(first_node, second_node);
+        let new_node = BranchNode::new(Some(first_node), Some(second_node));
         node_heap.push(new_node);
     }
     node_heap.pop().unwrap()
@@ -65,16 +65,20 @@ fn unwrap_bst_to_indices(tree_head: Node) -> BTreeMap<u8, Vec<bool>> {
         match node {
             Node::Branch(branch) => {
                 let BranchNode {
-                    mut left,
-                    mut right,
+                    left,
+                    right,
                     path,
                     ..
                 } = branch;
                 let path = path.unwrap_or_default();
-                left.set_path(path.clone(), false);
-                right.set_path(path, true);
-                queue.push_front(*left);
-                queue.push_front(*right);
+                if let Some(mut node) = left {
+                    node.set_path(path.clone(), false);
+                    queue.push_front(*node);
+                }
+                if let Some(mut node) = right {
+                    node.set_path(path.clone(), true);
+                    queue.push_front(*node);
+                }
             }
             Node::Leaf(leaf) => {
                 indices.insert(leaf.symbol, leaf.path.unwrap());

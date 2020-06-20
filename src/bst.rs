@@ -20,6 +20,14 @@ impl Node {
             Node::Leaf(leaf) => leaf.path = Some(new_path),
         }
     }
+
+    pub fn unwrap_branch_mut(&mut self) -> &mut BranchNode {
+        if let Node::Branch(branch) = self {
+            return branch;
+        } else {
+            panic!("Could not unwrap non branch node as branch.")
+        }
+    }
 }
 
 impl Ord for Node {
@@ -43,8 +51,8 @@ impl PartialEq for Node {
 }
 
 pub struct BranchNode {
-    pub left: Box<Node>,
-    pub right: Box<Node>,
+    pub left: Option<Box<Node>>,
+    pub right: Option<Box<Node>>,
     pub path: Option<Vec<bool>>,
     weight: usize,
 }
@@ -56,26 +64,31 @@ pub struct LeafNode {
 }
 
 impl BranchNode {
-    pub fn new(first: Node, second: Node) -> Node {
-        let weight = first.get_weight() + second.get_weight();
-        let weight_difference = first.get_weight() as isize - second.get_weight() as isize;
-        let first_node = Box::new(first);
-        let second_node = Box::new(second);
-        if weight_difference < 0 {
+    pub fn new(first: Option<Node>, second: Option<Node>) -> Node {
+        let first_node = first.map(|n| Box::new(n));
+        let second_node = second.map(|n| Box::new(n));
+        let (weight, change_order) = BranchNode::calculate_weights(&first_node, &second_node);
+        if !change_order {
             Node::Branch(BranchNode {
                 left: first_node,
                 right: second_node,
-                weight,
+                weight: weight as usize,
                 path: None,
             })
         } else {
             Node::Branch(BranchNode {
                 left: second_node,
                 right: first_node,
-                weight,
+                weight: weight as usize,
                 path: None,
             })
         }
+    }
+
+    fn calculate_weights(first: &Option<Box<Node>>, second: &Option<Box<Node>>) -> (isize, bool) {
+        let first_weight = first.as_ref().map_or(0, |n| n.get_weight() as isize);
+        let second_weight = second.as_ref().map_or(0, |n| n.get_weight() as isize);
+        (first_weight + second_weight, first_weight - second_weight > 0)
     }
 }
 

@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use crate::bst::{Node, BranchNode, LeafNode};
 
 pub fn decode(mut buffer: Vec<u8>) {
     let (map_length, payload) = buffer.split_first_mut().unwrap();
     let indices = read_map(*map_length, payload);
+    let tree_head = indices_to_tree(indices);
 }
 
 fn read_map(map_length: u8, mut payload: &mut [u8]) -> BTreeMap<u8, Vec<bool>> {
@@ -26,4 +28,30 @@ fn read_map(map_length: u8, mut payload: &mut [u8]) -> BTreeMap<u8, Vec<bool>> {
         payload = new_payload;
     }
     indices
+}
+
+fn indices_to_tree(indices: BTreeMap<u8, Vec<bool>>) -> Node {
+    let mut tree_head = BranchNode::new(None, None);
+    for (value, path) in indices {
+        let mut current = tree_head.unwrap_branch_mut();
+        let leaf_right = path.last().unwrap();
+        for choice_right in path.iter().take(path.len()-1) {
+            let next_node = if *choice_right {
+                &mut current.right
+            } else {
+                &mut current.left
+            };
+            if let Some(node) = next_node {
+                current = node.unwrap_branch_mut();
+            } else {
+                current = next_node.get_or_insert(Box::new(BranchNode::new(None, None))).unwrap_branch_mut();
+            }
+        }
+        if *leaf_right {
+            current.right.replace(Box::new(LeafNode::new(value, 0)));
+        } else {
+            current.left.replace(Box::new(LeafNode::new(value, 0)));
+        }
+    }
+    tree_head
 }
