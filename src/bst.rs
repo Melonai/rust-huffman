@@ -23,7 +23,7 @@ impl Node {
 
     pub fn unwrap_branch_mut(&mut self) -> &mut BranchNode {
         if let Node::Branch(branch) = self {
-            return branch;
+            branch
         } else {
             panic!("Could not unwrap non branch node as branch.")
         }
@@ -65,8 +65,8 @@ pub struct LeafNode {
 
 impl BranchNode {
     pub fn new(first: Option<Node>, second: Option<Node>) -> Node {
-        let first_node = first.map(|n| Box::new(n));
-        let second_node = second.map(|n| Box::new(n));
+        let first_node = first.map(Box::new);
+        let second_node = second.map(Box::new);
         let (weight, change_order) = BranchNode::calculate_weights(&first_node, &second_node);
         if !change_order {
             Node::Branch(BranchNode {
@@ -96,7 +96,10 @@ impl BranchNode {
     fn calculate_weights(first: &Option<Box<Node>>, second: &Option<Box<Node>>) -> (isize, bool) {
         let first_weight = first.as_ref().map_or(0, |n| n.get_weight() as isize);
         let second_weight = second.as_ref().map_or(0, |n| n.get_weight() as isize);
-        (first_weight + second_weight, first_weight - second_weight > 0)
+        (
+            first_weight + second_weight,
+            first_weight - second_weight > 0,
+        )
     }
 }
 

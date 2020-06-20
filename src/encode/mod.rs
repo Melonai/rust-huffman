@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BinaryHeap, HashMap, VecDeque};
 use std::iter::FromIterator;
 use std::time::Instant;
 
-pub fn encode(buffer: &Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
+pub fn encode(buffer: &[u8]) -> Result<Vec<u8>, std::io::Error> {
     let start = Instant::now();
 
     let byte_count_table = count_occurrence(buffer);
@@ -36,7 +36,7 @@ fn booleans_to_u8(booleans: Vec<bool>) -> Vec<u8> {
     result
 }
 
-fn count_occurrence(buffer: &Vec<u8>) -> BTreeMap<u8, usize> {
+fn count_occurrence(buffer: &[u8]) -> BTreeMap<u8, usize> {
     let mut count = HashMap::<u8, usize>::new();
 
     for byte in buffer {
@@ -65,10 +65,7 @@ fn unwrap_bst_to_indices(tree_head: Node) -> BTreeMap<u8, Vec<bool>> {
         match node {
             Node::Branch(branch) => {
                 let BranchNode {
-                    left,
-                    right,
-                    path,
-                    ..
+                    left, right, path, ..
                 } = branch;
                 let path = path.unwrap_or_default();
                 if let Some(mut node) = left {
@@ -88,7 +85,7 @@ fn unwrap_bst_to_indices(tree_head: Node) -> BTreeMap<u8, Vec<bool>> {
     indices
 }
 
-fn create_payload(buffer: &Vec<u8>, indices: &BTreeMap<u8, Vec<bool>>) -> Vec<bool> {
+fn create_payload(buffer: &[u8], indices: &BTreeMap<u8, Vec<bool>>) -> Vec<bool> {
     let mut payload: Vec<bool> = vec![];
     for byte in buffer {
         payload.append(&mut indices.get(byte).unwrap().clone());
