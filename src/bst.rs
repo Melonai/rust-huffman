@@ -85,6 +85,14 @@ impl BranchNode {
         }
     }
 
+    pub fn choose_branch_mut(&mut self, right: bool) -> &mut Option<Box<Node>> {
+        if right {
+            &mut self.right
+        } else {
+            &mut self.left
+        }
+    }
+
     fn calculate_weights(first: &Option<Box<Node>>, second: &Option<Box<Node>>) -> (isize, bool) {
         let first_weight = first.as_ref().map_or(0, |n| n.get_weight() as isize);
         let second_weight = second.as_ref().map_or(0, |n| n.get_weight() as isize);

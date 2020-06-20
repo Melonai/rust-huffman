@@ -36,22 +36,14 @@ fn indices_to_tree(indices: BTreeMap<u8, Vec<bool>>) -> Node {
         let mut current = tree_head.unwrap_branch_mut();
         let leaf_right = path.last().unwrap();
         for choice_right in path.iter().take(path.len()-1) {
-            let next_node = if *choice_right {
-                &mut current.right
-            } else {
-                &mut current.left
-            };
+            let next_node = current.choose_branch_mut(*choice_right);
             if let Some(node) = next_node {
                 current = node.unwrap_branch_mut();
             } else {
                 current = next_node.get_or_insert(Box::new(BranchNode::new(None, None))).unwrap_branch_mut();
             }
         }
-        if *leaf_right {
-            current.right.replace(Box::new(LeafNode::new(value, 0)));
-        } else {
-            current.left.replace(Box::new(LeafNode::new(value, 0)));
-        }
+        current.choose_branch_mut(*leaf_right).replace(Box::new(LeafNode::new(value, 0)));
     }
     tree_head
 }
