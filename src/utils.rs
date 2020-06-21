@@ -12,14 +12,6 @@ pub fn booleans_to_u8(booleans: Vec<bool>) -> Vec<u8> {
     result
 }
 
-pub fn u8_to_booleans(num: u8) -> Vec<bool> {
-    let mut booleans = Vec::new();
-    for bit in 0..8 {
-        booleans.push(bit_at(num, bit));
-    }
-    booleans
-}
-
 pub fn bit_at(byte: u8, bit_index: u8) -> bool {
     byte & (1 << (7 - bit_index)) != 0
 }

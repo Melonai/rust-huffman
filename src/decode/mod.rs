@@ -10,15 +10,15 @@ pub fn decode(mut buffer: Vec<u8>) -> Result<Vec<u8>, ()> {
     let (indices, payload) = read_map_and_separate(*map_length, payload);
     log_time(start, "Read map");
 
-    let (payload_pad, payload) = payload.split_first_mut().unwrap();
+    let (overflow_amount, payload) = payload.split_first_mut().unwrap();
     let tree_head = indices_to_tree(&indices);
     log_time(start, "Created tree from indices");
 
     let mut decoded = Vec::new();
     let mut current = &tree_head;
-    let mut bit = *payload_pad;
-    for byte in payload {
-        while bit < 8 {
+    let mut bit: u8 = 0;
+    for (index, byte) in payload.iter().enumerate() {
+        while bit < (*overflow_amount as usize + (payload.len() - index - 1) * 8).min(8) as u8 {
             if let Node::Branch(branch) = current {
                 current = branch.choose_branch(bit_at(*byte, bit)).as_ref().unwrap();
                 if let Node::Leaf(leaf) = current {

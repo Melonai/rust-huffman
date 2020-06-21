@@ -1,5 +1,5 @@
 use crate::bst::{BranchNode, LeafNode, Node};
-use crate::utils::{booleans_to_u8, log_time, u8_to_booleans};
+use crate::utils::{booleans_to_u8, log_time};
 use std::collections::{BTreeMap, BinaryHeap, HashMap, VecDeque};
 use std::iter::FromIterator;
 use std::time::Instant;
@@ -15,8 +15,7 @@ pub fn encode(buffer: &[u8]) -> Result<Vec<u8>, ()> {
 
     let indices = unwrap_bst_to_indices(tree_head);
     log_time(start, "Got indices from binary tree");
-    let payload_booleans = create_payload(buffer, &indices);
-    let payload = booleans_to_u8(payload_booleans);
+    let payload = create_payload(buffer, &indices);
     log_time(start, "Created payload for file");
 
     let map = create_map(indices);
@@ -74,17 +73,23 @@ pub fn unwrap_bst_to_indices(tree_head: Node) -> BTreeMap<u8, Vec<bool>> {
     indices
 }
 
-fn create_payload(buffer: &[u8], indices: &BTreeMap<u8, Vec<bool>>) -> Vec<bool> {
-    let mut payload: Vec<bool> = vec![];
+fn create_payload(buffer: &[u8], indices: &BTreeMap<u8, Vec<bool>>) -> Vec<u8> {
+    let mut payload: Vec<u8> = vec![0];
+    let mut current_bit = 0;
     for byte in buffer {
-        payload.append(&mut indices.get(byte).unwrap().clone());
+        let to_write = indices.get(byte).unwrap().clone();
+        for bit in to_write {
+            if current_bit == 8 {
+                current_bit = 0;
+                payload.push(0);
+            }
+            let current = payload.last_mut().unwrap();
+            *current |= (bit as u8) << (7 - current_bit);
+            current_bit += 1;
+        }
     }
-    let pad_length = (((payload.len() + 7) / 8) * 8) - payload.len();
-    let mut result = Vec::new();
-    result.append(&mut u8_to_booleans(pad_length as u8));
-    result.append(&mut vec![false; pad_length]);
-    result.append(&mut payload);
-    result
+    payload.insert(0, current_bit);
+    payload
 }
 
 pub fn create_map(indices: BTreeMap<u8, Vec<bool>>) -> Vec<u8> {
