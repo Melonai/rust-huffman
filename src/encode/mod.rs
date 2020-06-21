@@ -1,9 +1,10 @@
 use crate::bst::{BranchNode, LeafNode, Node};
+use crate::utils::{booleans_to_u8, log_time, u8_to_booleans};
 use std::collections::{BTreeMap, BinaryHeap, HashMap, VecDeque};
 use std::iter::FromIterator;
 use std::time::Instant;
 
-pub fn encode(buffer: &[u8]) -> Result<Vec<u8>, std::io::Error> {
+pub fn encode(buffer: &[u8]) -> Result<Vec<u8>, ()> {
     let start = Instant::now();
 
     let byte_count_table = count_occurrence(buffer);
@@ -14,8 +15,8 @@ pub fn encode(buffer: &[u8]) -> Result<Vec<u8>, std::io::Error> {
 
     let indices = unwrap_bst_to_indices(tree_head);
     log_time(start, "Got indices from binary tree");
-
-    let payload = booleans_to_u8(create_payload(buffer, &indices));
+    let payload_booleans = create_payload(buffer, &indices);
+    let payload = booleans_to_u8(payload_booleans);
     log_time(start, "Created payload for file");
 
     let map = create_map(indices);
@@ -24,19 +25,7 @@ pub fn encode(buffer: &[u8]) -> Result<Vec<u8>, std::io::Error> {
     Ok([map.as_slice(), payload.as_slice()].concat())
 }
 
-fn log_time(start: Instant, message: &str) {
-    println!("{}: {}", message, start.elapsed().as_secs_f32());
-}
-
-fn booleans_to_u8(booleans: Vec<bool>) -> Vec<u8> {
-    let mut result: Vec<u8> = Vec::new();
-    for byte in booleans.chunks(8) {
-        result.push(byte.iter().fold(0, |acc, b| acc << 1 | (*b as u8)));
-    }
-    result
-}
-
-fn count_occurrence(buffer: &[u8]) -> BTreeMap<u8, usize> {
+pub fn count_occurrence(buffer: &[u8]) -> BTreeMap<u8, usize> {
     let mut count = HashMap::<u8, usize>::new();
 
     for byte in buffer {
@@ -45,7 +34,7 @@ fn count_occurrence(buffer: &[u8]) -> BTreeMap<u8, usize> {
     BTreeMap::from_iter(count)
 }
 
-fn create_bst(count: &BTreeMap<u8, usize>) -> Node {
+pub fn create_bst(count: &BTreeMap<u8, usize>) -> Node {
     let mut node_heap: BinaryHeap<Node> = count.iter().map(|n| LeafNode::new(*n.0, *n.1)).collect();
     while node_heap.len() != 1 {
         let first_node = node_heap.pop().unwrap();
@@ -56,7 +45,7 @@ fn create_bst(count: &BTreeMap<u8, usize>) -> Node {
     node_heap.pop().unwrap()
 }
 
-fn unwrap_bst_to_indices(tree_head: Node) -> BTreeMap<u8, Vec<bool>> {
+pub fn unwrap_bst_to_indices(tree_head: Node) -> BTreeMap<u8, Vec<bool>> {
     let mut queue = VecDeque::<Node>::new();
     queue.push_front(tree_head);
     let mut indices = BTreeMap::new();
@@ -90,10 +79,15 @@ fn create_payload(buffer: &[u8], indices: &BTreeMap<u8, Vec<bool>>) -> Vec<bool>
     for byte in buffer {
         payload.append(&mut indices.get(byte).unwrap().clone());
     }
-    payload
+    let pad_length = (((payload.len() + 7) / 8) * 8) - payload.len();
+    let mut result = Vec::new();
+    result.append(&mut u8_to_booleans(pad_length as u8));
+    result.append(&mut vec![false; pad_length]);
+    result.append(&mut payload);
+    result
 }
 
-fn create_map(indices: BTreeMap<u8, Vec<bool>>) -> Vec<u8> {
+pub fn create_map(indices: BTreeMap<u8, Vec<bool>>) -> Vec<u8> {
     let mut map: Vec<u8> = vec![indices.len() as u8];
     for (value, boolean_index) in indices.into_iter() {
         let bit_amount = boolean_index.len() as u8;

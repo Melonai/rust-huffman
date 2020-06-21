@@ -1,14 +1,43 @@
 use crate::bst::{BranchNode, LeafNode, Node};
+use crate::utils::{bit_at, log_time};
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+use std::time::Instant;
 
-pub fn decode(mut buffer: Vec<u8>) {
+pub fn decode(mut buffer: Vec<u8>) -> Result<Vec<u8>, ()> {
+    let start = Instant::now();
     let (map_length, payload) = buffer.split_first_mut().unwrap();
-    let indices = read_map(*map_length, payload);
-    let tree_head = indices_to_tree(indices);
+    let (indices, payload) = read_map_and_separate(*map_length, payload);
+    log_time(start, "Read map");
+
+    let (payload_pad, payload) = payload.split_first_mut().unwrap();
+    let tree_head = indices_to_tree(&indices);
+    log_time(start, "Created tree from indices");
+
+    let mut decoded = Vec::new();
+    let mut current = &tree_head;
+    let mut bit = *payload_pad;
+    for byte in payload {
+        while bit < 8 {
+            if let Node::Branch(branch) = current {
+                current = branch.choose_branch(bit_at(*byte, bit)).as_ref().unwrap();
+                if let Node::Leaf(leaf) = current {
+                    decoded.push(leaf.symbol);
+                    current = &tree_head;
+                }
+                bit += 1;
+            }
+        }
+        bit = 0;
+    }
+    log_time(start, "Finished");
+    Ok(decoded)
 }
 
-fn read_map(map_length: u8, mut payload: &mut [u8]) -> BTreeMap<u8, Vec<bool>> {
+pub fn read_map_and_separate(
+    map_length: u8,
+    mut payload: &mut [u8],
+) -> (BTreeMap<u8, Vec<bool>>, &mut [u8]) {
     let mut indices = BTreeMap::new();
     for _ in 0..map_length {
         let (info, payload_no_info) = payload.split_at_mut(2);
@@ -21,16 +50,16 @@ fn read_map(map_length: u8, mut payload: &mut [u8]) -> BTreeMap<u8, Vec<bool>> {
         for bit in 0..bit_length {
             let byte_index = bit / 8;
             let bit_index = (bit_length - 1 - byte_index * 8).min(7) - bit % 8;
-            index.push(index_bytes[byte_index as usize] & (1 << bit_index) != 0);
+            index.push(bit_at(index_bytes[byte_index as usize], 7 - bit_index));
         }
 
         indices.insert(character, index);
         payload = new_payload;
     }
-    indices
+    (indices, payload)
 }
 
-fn indices_to_tree(indices: BTreeMap<u8, Vec<bool>>) -> Node {
+pub fn indices_to_tree(indices: &BTreeMap<u8, Vec<bool>>) -> Node {
     let mut tree_head = BranchNode::new(None, None);
     for (value, path) in indices {
         let mut current = tree_head.unwrap_branch_mut();
@@ -47,7 +76,7 @@ fn indices_to_tree(indices: BTreeMap<u8, Vec<bool>>) -> Node {
         }
         current
             .choose_branch_mut(*leaf_right)
-            .replace(Box::new(LeafNode::new(value, 0)));
+            .replace(Box::new(LeafNode::new(*value, 0)));
     }
     tree_head
 }
