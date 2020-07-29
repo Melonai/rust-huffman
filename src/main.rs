@@ -1,6 +1,10 @@
+extern crate clap;
+
+use clap::{App, SubCommand, Arg};
+
 use std::env;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::Path;
 
 mod bst;
@@ -9,41 +13,47 @@ mod encode;
 mod utils;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
-        help();
-        return;
-    }
-    let flag = args[1].as_str();
-    let file_path = args[2].as_str();
+    let cli_input = App::new("RHE")
+        .about("Rust Huffman Encoder - Encodes and decodes files using Huffman coding.")
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
+        .subcommand(
+            SubCommand::with_name("encode")
+                .about("Encodes the given file 'example.txt' into 'example.huff'.")
+                .arg(
+                    Arg::with_name("FILE")
+                        .required(true)
+                        .index(1)
+                )
+        )
+        .subcommand(
+            SubCommand::with_name("decode")
+                .about("Decodes the given file 'example.huff' into 'example.huff_decoded'.")
+                .arg(
+                    Arg::with_name("FILE")
+                        .required(true)
+                        .index(1)
+                )
+        )
+        .get_matches();
 
-    let mut file = File::open(file_path).expect("Failed to open file.");
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).expect("Failed to read file.");
-
-    match flag {
-        "-e" => {
-            match encode::encode(&buffer) {
+    match cli_input.subcommand() {
+        ("decode", Some(matched_file)) => {
+            let file_path = matched_file.value_of("FILE").unwrap();
+            match decode::decode(utils::file_path_to_buffer(file_path)) {
+                Ok(decoded) => write_output(file_path, "huff_decoded", decoded).expect("Failed to write."),
+                Err(_) => error(),
+            };
+        }
+        ("encode", Some(matched_file)) => {
+            let file_path = matched_file.value_of("FILE").unwrap();
+            match encode::encode(&utils::file_path_to_buffer(file_path)) {
                 Ok(encoded) => write_output(file_path, "huff", encoded).expect("Failed to write."),
                 Err(_) => error(),
             };
         }
-        "-d" => {
-            match decode::decode(buffer) {
-                Ok(decoded) => {
-                    write_output(file_path, "huff_decoded", decoded).expect("Failed to write.")
-                }
-                Err(_) => error(),
-            };
-        }
-        _ => {
-            help();
-        }
+        _ => {}
     }
-}
-
-fn help() {
-    println!("Usage: \n -d [FILE TO DECODE] \n -e [FILE TO ENCODE]");
 }
 
 fn error() {
